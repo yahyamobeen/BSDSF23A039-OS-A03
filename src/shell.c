@@ -6,7 +6,25 @@ static char* history[HISTORY_SIZE];
 static int history_count = 0;
 static int history_index = 0;
 
-char* read_cmd(char* prompt, FILE* fp) {
+// New read_cmd function using readline
+char* read_cmd(char* prompt) {
+    char* cmdline = readline(prompt);
+    
+    if (cmdline == NULL) {
+        return NULL; // Ctrl+D was pressed
+    }
+    
+    // Add non-empty commands to readline's history
+    if (strlen(cmdline) > 0) {
+        add_history(cmdline);
+    }
+    
+    return cmdline;
+}
+
+// Old read_cmd kept for reference (commented out)
+/*
+char* read_cmd_old(char* prompt, FILE* fp) {
     printf("%s", prompt);
     char* cmdline = (char*) malloc(sizeof(char) * MAX_LEN);
     int c, pos = 0;
@@ -24,6 +42,7 @@ char* read_cmd(char* prompt, FILE* fp) {
     cmdline[pos] = '\0';
     return cmdline;
 }
+*/
 
 char** tokenize(char* cmdline) {
     // Edge case: empty command line
@@ -187,6 +206,10 @@ void execute_help() {
     printf("  jobs              - Show background jobs (not yet implemented)\n");
     printf("  history           - Show command history\n");
     printf("  !<number>         - Execute command from history\n");
+    printf("\nEnhanced Features:\n");
+    printf("  Tab Completion    - Press Tab to complete commands and filenames\n");
+    printf("  History Navigation - Use Up/Down arrows to browse command history\n");
+    printf("  Line Editing      - Full line editing capabilities\n");
     printf("\nExternal commands are also supported (ls, pwd, grep, etc.)\n");
 }
 

@@ -1,5 +1,6 @@
 CC = gcc
 CFLAGS = -I./include -g -Wall
+LDFLAGS = -lreadline
 SRCDIR = src
 BINDIR = bin
 SOURCES = $(SRCDIR)/main.c $(SRCDIR)/shell.c $(SRCDIR)/execute.c
@@ -8,7 +9,7 @@ TARGET = $(BINDIR)/myshell
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(BINDIR)
-	$(CC) -o $@ $(OBJECTS)
+	$(CC) -o $@ $(OBJECTS) $(LDFLAGS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

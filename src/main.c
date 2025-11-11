@@ -4,7 +4,10 @@ int main() {
     char* cmdline;
     char** arglist;
 
-    while ((cmdline = read_cmd(PROMPT, stdin)) != NULL) {
+    // Initialize readline for better tab completion
+    rl_bind_key('\t', rl_complete);
+
+    while ((cmdline = read_cmd(PROMPT)) != NULL) {
         // Handle history execution before tokenization
         if (cmdline[0] == '!') {
             handle_history_execution(&cmdline);
