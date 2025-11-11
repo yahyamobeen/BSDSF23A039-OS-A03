@@ -2,7 +2,7 @@
 
 int main() {
     char* cmdline;
-    char** arglist;
+    pipeline_t* pipeline;
 
     // Initialize readline for better tab completion
     rl_bind_key('\t', rl_complete);
@@ -14,22 +14,25 @@ int main() {
             if (cmdline == NULL) continue;
         }
         
-        if ((arglist = tokenize(cmdline)) != NULL) {
-            // Add to history (except history command itself and empty commands)
-            if (strcmp(arglist[0], "history") != 0 && strlen(cmdline) > 0) {
-                add_to_history(cmdline);
+        // Parse the command line (handles pipes and redirection)
+        pipeline = parse_command_line(cmdline);
+        
+        if (pipeline != NULL && pipeline->num_commands > 0) {
+            // Check if it's a built-in command (only for single commands without pipes/redirection)
+            if (pipeline->num_commands == 1 && 
+                pipeline->commands[0].input_file == NULL && 
+                pipeline->commands[0].output_file == NULL) {
+                
+                char** arglist = pipeline->commands[0].args;
+                if (!handle_builtin(arglist)) {
+                    execute_pipeline(pipeline);
+                }
+            } else {
+                // Execute pipeline or command with redirection
+                execute_pipeline(pipeline);
             }
             
-            // Check for built-in commands first
-            if (!handle_builtin(arglist)) {
-                execute(arglist);
-            }
-
-            // Free the memory allocated by tokenize()
-            for (int i = 0; arglist[i] != NULL; i++) {
-                free(arglist[i]);
-            }
-            free(arglist);
+            free_pipeline(pipeline);
         }
         free(cmdline);
     }

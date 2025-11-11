@@ -28,9 +28,9 @@ Features Implemented
 
     Tab completion with Readline (command and filename completion)
 
-    I/O redirection and pipes
+    I/O redirection and pipes (<, >, >>, |)
 
-    Command chaining and background execution
+    Command chaining and background execution (; and &)
 
     if-then-else-fi control structure
 
@@ -58,17 +58,29 @@ Enhanced User Interface
 
     Line Editing: Full line editing capabilities (move cursor, delete, etc.)
 
-    Command History: Persistent command history across sessions
+I/O Redirection and Pipes
 
-History Features
+    Input Redirection: < - Read input from file
 
-    Stores last 20 commands in circular buffer
+        Example: sort < input.txt
 
-    history command displays numbered command list
+    Output Redirection: > - Write output to file (overwrite)
 
-    !n re-executes the nth command from history
+        Example: ls -l > file_list.txt
 
-    Prevents duplicate consecutive commands in history
+    Append Redirection: >> - Append output to file
+
+        Example: echo "new line" >> file.txt
+
+    Pipes: | - Connect commands
+
+        Example: cat file.txt | grep "pattern" | sort
+
+Background Execution
+
+    Background Jobs: & - Run command in background
+
+        Example: sleep 10 &
 
 Student: BSDSF23A039
 Course: Operating Systems
