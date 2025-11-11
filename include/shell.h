@@ -18,6 +18,15 @@
 #define PROMPT "myshell> "
 #define HISTORY_SIZE 20
 #define MAX_COMMANDS 10
+#define MAX_JOBS 100
+
+// Structure for background job
+typedef struct {
+    pid_t pid;
+    char* command;
+    int job_id;
+    int status; // 0=running, 1=completed, 2=stopped
+} job_t;
 
 // Structure for command with redirection
 typedef struct {
@@ -34,6 +43,10 @@ typedef struct {
     int num_commands;
 } pipeline_t;
 
+// Global job list
+extern job_t job_list[MAX_JOBS];
+extern int job_count;
+
 // Function declarations
 char* read_cmd(char* prompt);
 char** tokenize(char* cmdline);
@@ -44,12 +57,22 @@ pipeline_t* parse_command_line(char* cmdline);
 void free_pipeline(pipeline_t* pipeline);
 int is_redirection_operator(char* token);
 int is_pipe_operator(char* token);
+int is_chain_operator(char* token);
 
 // Execution functions
 int execute_pipeline(pipeline_t* pipeline);
 int execute_single_command(command_t* cmd);
+int execute_command_chain(char* cmdline);
 int setup_redirection(command_t* cmd);
 int setup_pipes(pipeline_t* pipeline, int pipefds[][2]);
+
+// Job control functions
+void init_jobs();
+void add_job(pid_t pid, char* command);
+void remove_job(pid_t pid);
+void update_jobs();
+void print_jobs();
+void cleanup_zombies();
 
 // Built-in command functions
 int handle_builtin(char** arglist);

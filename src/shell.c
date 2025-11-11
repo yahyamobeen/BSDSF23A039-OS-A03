@@ -60,7 +60,7 @@ char** tokenize(char* cmdline) {
         } else {
             // Regular token
             while (*cp != '\0' && *cp != ' ' && *cp != '\t' && 
-                   *cp != '|' && *cp != '<' && *cp != '>') {
+                   *cp != '|' && *cp != '<' && *cp != '>' && *cp != ';' && *cp != '&') {
                 len++;
                 cp++;
             }
@@ -91,6 +91,41 @@ int is_redirection_operator(char* token) {
 // Check if token is a pipe operator
 int is_pipe_operator(char* token) {
     return token != NULL && strcmp(token, "|") == 0;
+}
+
+// Check if token is a chain operator
+int is_chain_operator(char* token) {
+    return token != NULL && strcmp(token, ";") == 0;
+}
+
+// Execute command chain separated by semicolons
+int execute_command_chain(char* cmdline) {
+    char* saveptr;
+    char* token;
+    char* cmdline_copy = strdup(cmdline);
+    int status = 0;
+    
+    token = strtok_r(cmdline_copy, ";", &saveptr);
+    while (token != NULL) {
+        // Trim whitespace
+        while (*token == ' ' || *token == '\t') token++;
+        char* end = token + strlen(token) - 1;
+        while (end > token && (*end == ' ' || *end == '\t' || *end == ';')) end--;
+        *(end + 1) = '\0';
+        
+        if (strlen(token) > 0) {
+            pipeline_t* pipeline = parse_command_line(token);
+            if (pipeline != NULL && pipeline->num_commands > 0) {
+                status = execute_pipeline(pipeline);
+                free_pipeline(pipeline);
+            }
+        }
+        
+        token = strtok_r(NULL, ";", &saveptr);
+    }
+    
+    free(cmdline_copy);
+    return status;
 }
 
 // Parse command line with pipes and redirection
@@ -142,8 +177,8 @@ pipeline_t* parse_command_line(char* cmdline) {
                 current_cmd->output_file = strdup(tokens[++i]);
                 current_cmd->append_output = 1;
             }
-        } else if (strcmp(tokens[i], "&") == 0) {
-            // Background execution
+        } else if (strcmp(tokens[i], "&") == 0 && tokens[i + 1] == NULL) {
+            // Background execution (only if & is at the end)
             current_cmd->background = 1;
         } else {
             // Regular argument
@@ -244,9 +279,25 @@ int execute_pipeline(pipeline_t* pipeline) {
             close(pipefds[i][1]);
         }
         
-        // Wait for all children
+        // Wait for all children (unless background)
+        int background = 0;
         for (int i = 0; i < pipeline->num_commands; i++) {
-            waitpid(pids[i], &status, 0);
+            if (pipeline->commands[i].background) {
+                background = 1;
+                // Add to job list
+                char job_cmd[1024] = {0};
+                for (int j = 0; pipeline->commands[i].args[j] != NULL; j++) {
+                    strcat(job_cmd, pipeline->commands[i].args[j]);
+                    strcat(job_cmd, " ");
+                }
+                add_job(pids[i], job_cmd);
+            }
+        }
+        
+        if (!background) {
+            for (int i = 0; i < pipeline->num_commands; i++) {
+                waitpid(pids[i], &status, 0);
+            }
         }
         
         return 0;
@@ -256,6 +307,9 @@ int execute_pipeline(pipeline_t* pipeline) {
 // Execute a single command with redirection
 int execute_single_command(command_t* cmd) {
     if (cmd == NULL || cmd->args[0] == NULL) return -1;
+    
+    // Handle empty command
+    if (cmd->args[0][0] == '\0') return 0;
     
     pid_t pid = fork();
     
@@ -280,7 +334,13 @@ int execute_single_command(command_t* cmd) {
             waitpid(pid, &status, 0);
             return status;
         } else {
-            printf("[%d] %s\n", pid, cmd->args[0]);
+            // Add to job list for background process
+            char job_cmd[1024] = {0};
+            for (int i = 0; cmd->args[i] != NULL; i++) {
+                strcat(job_cmd, cmd->args[i]);
+                strcat(job_cmd, " ");
+            }
+            add_job(pid, job_cmd);
             return 0;
         }
     }
@@ -464,7 +524,7 @@ void execute_help() {
     printf("  cd <directory>    - Change current directory\n");
     printf("  exit              - Exit the shell\n");
     printf("  help              - Show this help message\n");
-    printf("  jobs              - Show background jobs (not yet implemented)\n");
+    printf("  jobs              - Show background jobs\n");
     printf("  history           - Show command history\n");
     printf("  !<number>         - Execute command from history\n");
     printf("\nEnhanced Features:\n");
@@ -473,17 +533,18 @@ void execute_help() {
     printf("  Line Editing      - Full line editing capabilities\n");
     printf("  I/O Redirection   - < (input), > (output), >> (append)\n");
     printf("  Pipes             - | (connect commands)\n");
+    printf("  Command Chaining  - ; (sequential execution)\n");
     printf("  Background Jobs   - & (run in background)\n");
     printf("\nExamples:\n");
-    printf("  ls -l > file_list.txt\n");
-    printf("  cat file.txt | grep \"pattern\" | sort\n");
-    printf("  sort < input.txt > output.txt\n");
-    printf("  sleep 10 &\n");
+    printf("  ls -l; pwd; whoami           # Sequential execution\n");
+    printf("  sleep 10 &                   # Background job\n");
+    printf("  ls -l > file_list.txt        # Output redirection\n");
+    printf("  cat file.txt | grep pattern  # Pipe\n");
     printf("\nExternal commands are also supported (ls, pwd, grep, etc.)\n");
 }
 
 void execute_jobs() {
-    printf("Job control not yet implemented.\n");
+    print_jobs();
 }
 
 void execute_history() {

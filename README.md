@@ -44,7 +44,7 @@ Current Built-in Commands
 
     help - Show help message with available commands
 
-    jobs - Placeholder for job control (not yet implemented)
+    jobs - Show active background jobs
 
     history - Show command history (last 20 commands)
 
@@ -76,11 +76,19 @@ I/O Redirection and Pipes
 
         Example: cat file.txt | grep "pattern" | sort
 
-Background Execution
+Command Chaining and Background Execution
+
+    Command Chaining: ; - Execute commands sequentially
+
+        Example: ls -l; pwd; whoami
 
     Background Jobs: & - Run command in background
 
         Example: sleep 10 &
+
+    Job Control: jobs - List active background jobs
+
+    Zombie Prevention: Automatic cleanup of completed processes
 
 Student: BSDSF23A039
 Course: Operating Systems
