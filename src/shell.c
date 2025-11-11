@@ -1,4 +1,5 @@
 #include "shell.h"
+#include <errno.h>
 
 char* read_cmd(char* prompt, FILE* fp) {
     printf("%s", prompt);
@@ -28,7 +29,7 @@ char** tokenize(char* cmdline) {
     char** arglist = (char**)malloc(sizeof(char*) * (MAXARGS + 1));
     for (int i = 0; i < MAXARGS + 1; i++) {
         arglist[i] = (char*)malloc(sizeof(char) * ARGLEN);
-        bzero(arglist[i], ARGLEN);
+        memset(arglist[i], 0, ARGLEN);
     }
 
     char* cp = cmdline;
@@ -59,4 +60,55 @@ char** tokenize(char* cmdline) {
 
     arglist[argnum] = NULL;
     return arglist;
+}
+
+// Built-in command handler
+int handle_builtin(char** arglist) {
+    if (arglist[0] == NULL) return 0;
+    
+    if (strcmp(arglist[0], "exit") == 0) {
+        printf("Shell exited.\n");
+        exit(0);
+    } else if (strcmp(arglist[0], "cd") == 0) {
+        execute_cd(arglist);
+        return 1;
+    } else if (strcmp(arglist[0], "help") == 0) {
+        execute_help();
+        return 1;
+    } else if (strcmp(arglist[0], "jobs") == 0) {
+        execute_jobs();
+        return 1;
+    }
+    return 0;
+}
+
+void execute_cd(char** args) {
+    if (args[1] == NULL) {
+        // No argument provided, change to home directory
+        char* home = getenv("HOME");
+        if (home == NULL) {
+            fprintf(stderr, "cd: HOME environment variable not set\n");
+            return;
+        }
+        if (chdir(home) != 0) {
+            perror("cd");
+        }
+    } else {
+        if (chdir(args[1]) != 0) {
+            perror("cd");
+        }
+    }
+}
+
+void execute_help() {
+    printf("Built-in commands:\n");
+    printf("  cd <directory>    - Change current directory\n");
+    printf("  exit              - Exit the shell\n");
+    printf("  help              - Show this help message\n");
+    printf("  jobs              - Show background jobs (not yet implemented)\n");
+    printf("\nExternal commands are also supported (ls, pwd, grep, etc.)\n");
+}
+
+void execute_jobs() {
+    printf("Job control not yet implemented.\n");
 }
