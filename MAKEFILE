@@ -1,0 +1,19 @@
+CC = gcc
+CFLAGS = -I./include -g -Wall
+SRCDIR = src
+BINDIR = bin
+SOURCES = $(SRCDIR)/main.c $(SRCDIR)/shell.c $(SRCDIR)/execute.c
+OBJECTS = $(SOURCES:.c=.o)
+TARGET = $(BINDIR)/myshell
+
+$(TARGET): $(OBJECTS)
+	@mkdir -p $(BINDIR)
+	$(CC) -o $@ $(OBJECTS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(OBJECTS) $(TARGET)
+
+.PHONY: clean
