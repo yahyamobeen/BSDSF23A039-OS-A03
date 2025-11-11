@@ -1,6 +1,11 @@
 #include "shell.h"
 #include <errno.h>
 
+// Global history variables
+static char* history[HISTORY_SIZE];
+static int history_count = 0;
+static int history_index = 0;
+
 char* read_cmd(char* prompt, FILE* fp) {
     printf("%s", prompt);
     char* cmdline = (char*) malloc(sizeof(char) * MAX_LEN);
@@ -62,6 +67,77 @@ char** tokenize(char* cmdline) {
     return arglist;
 }
 
+// History functions implementation
+void add_to_history(const char* command) {
+    if (command == NULL || strlen(command) == 0) return;
+    
+    // Don't add duplicate consecutive commands
+    if (history_count > 0 && history[history_index] != NULL && 
+        strcmp(history[history_index], command) == 0) {
+        return;
+    }
+    
+    history_index = (history_index + 1) % HISTORY_SIZE;
+    if (history[history_index] != NULL) {
+        free(history[history_index]);
+    }
+    history[history_index] = strdup(command);
+    
+    if (history_count < HISTORY_SIZE) {
+        history_count++;
+    }
+}
+
+void print_history() {
+    if (history_count == 0) {
+        printf("No commands in history.\n");
+        return;
+    }
+    
+    int start = (history_index - history_count + 1 + HISTORY_SIZE) % HISTORY_SIZE;
+    for (int i = 0; i < history_count; i++) {
+        int idx = (start + i) % HISTORY_SIZE;
+        printf("%d %s\n", i + 1, history[idx]);
+    }
+}
+
+char* get_history_command(int n) {
+    if (n < 1 || n > history_count) return NULL;
+    
+    int start = (history_index - history_count + 1 + HISTORY_SIZE) % HISTORY_SIZE;
+    int idx = (start + n - 1) % HISTORY_SIZE;
+    return strdup(history[idx]);
+}
+
+void handle_history_execution(char** cmdline) {
+    if (*cmdline == NULL || (*cmdline)[0] != '!') return;
+    
+    if (strlen(*cmdline) == 1) {
+        printf("Usage: !<number>\n");
+        return;
+    }
+    
+    char* endptr;
+    int n = strtol((*cmdline) + 1, &endptr, 10);
+    
+    if (endptr == (*cmdline) + 1 || *endptr != '\0') {
+        printf("Invalid history number: %s\n", (*cmdline) + 1);
+        return;
+    }
+    
+    if (n < 1 || n > history_count) {
+        printf("No such command in history: %d (history size: %d)\n", n, history_count);
+        return;
+    }
+    
+    char* historic_cmd = get_history_command(n);
+    if (historic_cmd) {
+        free(*cmdline);
+        *cmdline = historic_cmd;
+        printf("Executing: %s\n", historic_cmd);
+    }
+}
+
 // Built-in command handler
 int handle_builtin(char** arglist) {
     if (arglist[0] == NULL) return 0;
@@ -77,6 +153,9 @@ int handle_builtin(char** arglist) {
         return 1;
     } else if (strcmp(arglist[0], "jobs") == 0) {
         execute_jobs();
+        return 1;
+    } else if (strcmp(arglist[0], "history") == 0) {
+        execute_history();
         return 1;
     }
     return 0;
@@ -106,9 +185,15 @@ void execute_help() {
     printf("  exit              - Exit the shell\n");
     printf("  help              - Show this help message\n");
     printf("  jobs              - Show background jobs (not yet implemented)\n");
+    printf("  history           - Show command history\n");
+    printf("  !<number>         - Execute command from history\n");
     printf("\nExternal commands are also supported (ls, pwd, grep, etc.)\n");
 }
 
 void execute_jobs() {
     printf("Job control not yet implemented.\n");
+}
+
+void execute_history() {
+    print_history();
 }

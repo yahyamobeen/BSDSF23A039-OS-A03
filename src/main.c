@@ -5,7 +5,18 @@ int main() {
     char** arglist;
 
     while ((cmdline = read_cmd(PROMPT, stdin)) != NULL) {
+        // Handle history execution before tokenization
+        if (cmdline[0] == '!') {
+            handle_history_execution(&cmdline);
+            if (cmdline == NULL) continue;
+        }
+        
         if ((arglist = tokenize(cmdline)) != NULL) {
+            // Add to history (except history command itself and empty commands)
+            if (strcmp(arglist[0], "history") != 0 && strlen(cmdline) > 0) {
+                add_to_history(cmdline);
+            }
+            
             // Check for built-in commands first
             if (!handle_builtin(arglist)) {
                 execute(arglist);
