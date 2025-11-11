@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #define MAX_LEN 1024
 #define MAXARGS 64
@@ -15,7 +17,7 @@
 #define HISTORY_SIZE 20
 
 // Function declarations
-char* read_cmd(char* prompt, FILE* fp);
+char* read_cmd(char* prompt);
 char** tokenize(char* cmdline);
 int execute(char* arglist[]);
 
