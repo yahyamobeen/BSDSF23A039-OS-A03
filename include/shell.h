@@ -19,6 +19,7 @@
 #define HISTORY_SIZE 20
 #define MAX_COMMANDS 10
 #define MAX_JOBS 100
+#define MAX_IF_BLOCKS 10
 
 // Structure for background job
 typedef struct {
@@ -43,12 +44,23 @@ typedef struct {
     int num_commands;
 } pipeline_t;
 
+// Structure for if-then-else block
+typedef struct {
+    char* condition_command;
+    char* then_commands[MAX_COMMANDS];
+    char* else_commands[MAX_COMMANDS];
+    int then_count;
+    int else_count;
+    int has_else;
+} if_block_t;
+
 // Global job list
 extern job_t job_list[MAX_JOBS];
 extern int job_count;
 
 // Function declarations
 char* read_cmd(char* prompt);
+char* read_multiline_cmd(char* prompt);
 char** tokenize(char* cmdline);
 int execute(char* arglist[]);
 
@@ -63,8 +75,14 @@ int is_chain_operator(char* token);
 int execute_pipeline(pipeline_t* pipeline);
 int execute_single_command(command_t* cmd);
 int execute_command_chain(char* cmdline);
+int execute_if_block(if_block_t* if_block);
 int setup_redirection(command_t* cmd);
 int setup_pipes(pipeline_t* pipeline, int pipefds[][2]);
+
+// Control structure functions
+int is_control_structure(char* cmdline);
+if_block_t* parse_if_structure();
+int execute_condition(char* condition);
 
 // Job control functions
 void init_jobs();

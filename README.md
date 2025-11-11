@@ -88,7 +88,27 @@ Command Chaining and Background Execution
 
     Job Control: jobs - List active background jobs
 
-    Zombie Prevention: Automatic cleanup of completed processes
+Control Structures
+
+    if-then-else-fi: Conditional command execution
+
+        Example:
+        bash
+
+if grep "user" /etc/passwd
+then
+    echo "User found"
+else
+    echo "User not found"
+fi
+
+Example without else:
+bash
+
+if [ -f "myfile.txt" ]
+then
+    echo "File exists"
+fi
 
 Student: BSDSF23A039
 Course: Operating Systems

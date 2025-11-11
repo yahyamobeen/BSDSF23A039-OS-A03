@@ -10,15 +10,41 @@ int main() {
     // Initialize readline for better tab completion
     rl_bind_key('\t', rl_complete);
 
-    while ((cmdline = read_cmd(PROMPT)) != NULL) {
+    while (1) {
         // Clean up zombie processes before new command
         cleanup_zombies();
         update_jobs();
         
+        // Check for control structures first
+        if (is_control_structure(NULL)) {
+            if_block_t* if_block = parse_if_structure();
+            if (if_block != NULL) {
+                execute_if_block(if_block);
+                
+                // Free if_block memory
+                free(if_block->condition_command);
+                for (int i = 0; i < if_block->then_count; i++) {
+                    free(if_block->then_commands[i]);
+                }
+                for (int i = 0; i < if_block->else_count; i++) {
+                    free(if_block->else_commands[i]);
+                }
+                free(if_block);
+                continue;
+            }
+        }
+        
+        // Regular command input
+        cmdline = read_cmd(PROMPT);
+        if (cmdline == NULL) break; // Ctrl+D
+        
         // Handle history execution before tokenization
         if (cmdline[0] == '!') {
             handle_history_execution(&cmdline);
-            if (cmdline == NULL) continue;
+            if (cmdline == NULL) {
+                free(cmdline);
+                continue;
+            }
         }
         
         // Check for command chaining (semicolon)
