@@ -1,4 +1,3 @@
-cat > src/parser.c << 'EOF'
 #include "shell.h"
 #include <string.h>
 #include <stdlib.h>
@@ -88,4 +87,3 @@ void free_pipeline(pipeline_t* pipeline) {
     
     free(pipeline);
 }
-EOF

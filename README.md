@@ -22,7 +22,7 @@ Features Implemented
 
     Base shell functionality
 
-    Built-in commands (exit, cd, help, jobs)
+    Built-in commands (exit, cd, help, jobs, history, set)
 
     Command history (history command and !n execution)
 
@@ -48,7 +48,23 @@ Current Built-in Commands
 
     history - Show command history (last 20 commands)
 
+    set - Show all shell variables
+
     !<number> - Execute command from history by number
+
+Shell Variables
+
+    Variable Assignment: VARNAME=value
+
+        Example: NAME="John Doe", COUNT=5
+
+    Variable Expansion: $VARNAME
+
+        Example: echo $NAME, ls $HOME
+
+    Environment Variables: Automatic access to system environment variables
+
+    Quoted Values: Support for quoted strings: MSG="Hello World"
 
 Enhanced User Interface
 
@@ -62,29 +78,17 @@ I/O Redirection and Pipes
 
     Input Redirection: < - Read input from file
 
-        Example: sort < input.txt
-
     Output Redirection: > - Write output to file (overwrite)
-
-        Example: ls -l > file_list.txt
 
     Append Redirection: >> - Append output to file
 
-        Example: echo "new line" >> file.txt
-
     Pipes: | - Connect commands
-
-        Example: cat file.txt | grep "pattern" | sort
 
 Command Chaining and Background Execution
 
     Command Chaining: ; - Execute commands sequentially
 
-        Example: ls -l; pwd; whoami
-
     Background Jobs: & - Run command in background
-
-        Example: sleep 10 &
 
     Job Control: jobs - List active background jobs
 
@@ -102,12 +106,21 @@ else
     echo "User not found"
 fi
 
-Example without else:
+Examples
 bash
 
-if [ -f "myfile.txt" ]
+# Variables and commands
+NAME="Alice"
+echo "Hello, $NAME"
+COUNT=3; echo "Count: $COUNT"
+
+# Complex example with all features
+if [ -f "$HOME/.bashrc" ]
 then
-    echo "File exists"
+    cat $HOME/.bashrc | grep "alias" > aliases.txt
+    echo "Aliases saved" &
+else
+    echo "No .bashrc found"
 fi
 
 Student: BSDSF23A039

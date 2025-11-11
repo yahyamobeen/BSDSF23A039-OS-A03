@@ -20,6 +20,13 @@
 #define MAX_COMMANDS 10
 #define MAX_JOBS 100
 #define MAX_IF_BLOCKS 10
+#define MAX_VARIABLES 100
+
+// Structure for shell variable
+typedef struct {
+    char* name;
+    char* value;
+} variable_t;
 
 // Structure for background job
 typedef struct {
@@ -58,6 +65,10 @@ typedef struct {
 extern job_t job_list[MAX_JOBS];
 extern int job_count;
 
+// Global variable list
+extern variable_t variable_list[MAX_VARIABLES];
+extern int variable_count;
+
 // Function declarations
 char* read_cmd(char* prompt);
 char* read_multiline_cmd(char* prompt);
@@ -70,6 +81,15 @@ void free_pipeline(pipeline_t* pipeline);
 int is_redirection_operator(char* token);
 int is_pipe_operator(char* token);
 int is_chain_operator(char* token);
+int is_variable_assignment(char* token);
+
+// Variable functions
+void init_variables();
+int set_variable(char* name, char* value);
+char* get_variable(char* name);
+void expand_variables(char*** arglist);
+void print_variables();
+int handle_variable_assignment(char* assignment);
 
 // Execution functions
 int execute_pipeline(pipeline_t* pipeline);
@@ -98,6 +118,7 @@ void execute_cd(char** args);
 void execute_help();
 void execute_jobs();
 void execute_history();
+void execute_set();
 
 // History functions
 void add_to_history(const char* command);
