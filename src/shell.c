@@ -22,28 +22,7 @@ char* read_cmd(char* prompt) {
     return cmdline;
 }
 
-// Old read_cmd kept for reference (commented out)
-/*
-char* read_cmd_old(char* prompt, FILE* fp) {
-    printf("%s", prompt);
-    char* cmdline = (char*) malloc(sizeof(char) * MAX_LEN);
-    int c, pos = 0;
-
-    while ((c = getc(fp)) != EOF) {
-        if (c == '\n') break;
-        cmdline[pos++] = c;
-    }
-
-    if (c == EOF && pos == 0) {
-        free(cmdline);
-        return NULL; // Handle Ctrl+D
-    }
-    
-    cmdline[pos] = '\0';
-    return cmdline;
-}
-*/
-
+// Enhanced tokenize function that handles redirection operators
 char** tokenize(char* cmdline) {
     // Edge case: empty command line
     if (cmdline == NULL || cmdline[0] == '\0' || cmdline[0] == '\n') {
@@ -52,14 +31,14 @@ char** tokenize(char* cmdline) {
 
     char** arglist = (char**)malloc(sizeof(char*) * (MAXARGS + 1));
     for (int i = 0; i < MAXARGS + 1; i++) {
-        arglist[i] = (char*)malloc(sizeof(char) * ARGLEN);
-        memset(arglist[i], 0, ARGLEN);
+        arglist[i] = NULL;
     }
 
     char* cp = cmdline;
     char* start;
     int len;
     int argnum = 0;
+    int in_quotes = 0;
 
     while (*cp != '\0' && argnum < MAXARGS) {
         while (*cp == ' ' || *cp == '\t') cp++; // Skip leading whitespace
@@ -67,17 +46,35 @@ char** tokenize(char* cmdline) {
         if (*cp == '\0') break; // Line was only whitespace
 
         start = cp;
-        len = 1;
-        while (*++cp != '\0' && !(*cp == ' ' || *cp == '\t')) {
-            len++;
+        len = 0;
+        
+        // Handle quoted arguments
+        if (*cp == '"' || *cp == '\'') {
+            in_quotes = *cp;
+            start = ++cp; // Skip opening quote
+            while (*cp != '\0' && *cp != in_quotes) {
+                len++;
+                cp++;
+            }
+            if (*cp == in_quotes) cp++; // Skip closing quote
+        } else {
+            // Regular token
+            while (*cp != '\0' && *cp != ' ' && *cp != '\t' && 
+                   *cp != '|' && *cp != '<' && *cp != '>') {
+                len++;
+                cp++;
+            }
         }
-        strncpy(arglist[argnum], start, len);
-        arglist[argnum][len] = '\0';
-        argnum++;
+        
+        if (len > 0) {
+            arglist[argnum] = (char*)malloc(len + 1);
+            strncpy(arglist[argnum], start, len);
+            arglist[argnum][len] = '\0';
+            argnum++;
+        }
     }
 
     if (argnum == 0) { // No arguments were parsed
-        for(int i = 0; i < MAXARGS + 1; i++) free(arglist[i]);
         free(arglist);
         return NULL;
     }
@@ -86,6 +83,270 @@ char** tokenize(char* cmdline) {
     return arglist;
 }
 
+// Check if token is a redirection operator
+int is_redirection_operator(char* token) {
+    return token != NULL && (strcmp(token, "<") == 0 || strcmp(token, ">") == 0 || strcmp(token, ">>") == 0);
+}
+
+// Check if token is a pipe operator
+int is_pipe_operator(char* token) {
+    return token != NULL && strcmp(token, "|") == 0;
+}
+
+// Parse command line with pipes and redirection
+pipeline_t* parse_command_line(char* cmdline) {
+    if (cmdline == NULL || cmdline[0] == '\0') return NULL;
+    
+    pipeline_t* pipeline = (pipeline_t*)malloc(sizeof(pipeline_t));
+    pipeline->num_commands = 0;
+    
+    // Tokenize the entire command line
+    char** tokens = tokenize(cmdline);
+    if (tokens == NULL) {
+        free(pipeline);
+        return NULL;
+    }
+    
+    command_t* current_cmd = &pipeline->commands[0];
+    int arg_index = 0;
+    current_cmd->input_file = NULL;
+    current_cmd->output_file = NULL;
+    current_cmd->append_output = 0;
+    current_cmd->background = 0;
+    
+    for (int i = 0; tokens[i] != NULL && pipeline->num_commands < MAX_COMMANDS; i++) {
+        if (is_pipe_operator(tokens[i])) {
+            // End current command and start new one
+            current_cmd->args[arg_index] = NULL;
+            pipeline->num_commands++;
+            current_cmd = &pipeline->commands[pipeline->num_commands];
+            arg_index = 0;
+            current_cmd->input_file = NULL;
+            current_cmd->output_file = NULL;
+            current_cmd->append_output = 0;
+            current_cmd->background = 0;
+        } else if (strcmp(tokens[i], "<") == 0) {
+            // Input redirection
+            if (tokens[i + 1] != NULL) {
+                current_cmd->input_file = strdup(tokens[++i]);
+            }
+        } else if (strcmp(tokens[i], ">") == 0) {
+            // Output redirection (truncate)
+            if (tokens[i + 1] != NULL) {
+                current_cmd->output_file = strdup(tokens[++i]);
+                current_cmd->append_output = 0;
+            }
+        } else if (strcmp(tokens[i], ">>") == 0) {
+            // Output redirection (append)
+            if (tokens[i + 1] != NULL) {
+                current_cmd->output_file = strdup(tokens[++i]);
+                current_cmd->append_output = 1;
+            }
+        } else if (strcmp(tokens[i], "&") == 0) {
+            // Background execution
+            current_cmd->background = 1;
+        } else {
+            // Regular argument
+            current_cmd->args[arg_index++] = strdup(tokens[i]);
+        }
+    }
+    
+    // Finish the last command
+    if (arg_index > 0) {
+        current_cmd->args[arg_index] = NULL;
+        pipeline->num_commands++;
+    }
+    
+    // Free tokens
+    for (int i = 0; tokens[i] != NULL; i++) {
+        free(tokens[i]);
+    }
+    free(tokens);
+    
+    return pipeline;
+}
+
+// Free pipeline memory
+void free_pipeline(pipeline_t* pipeline) {
+    if (pipeline == NULL) return;
+    
+    for (int i = 0; i < pipeline->num_commands; i++) {
+        command_t* cmd = &pipeline->commands[i];
+        
+        for (int j = 0; cmd->args[j] != NULL; j++) {
+            free(cmd->args[j]);
+        }
+        
+        if (cmd->input_file != NULL) free(cmd->input_file);
+        if (cmd->output_file != NULL) free(cmd->output_file);
+    }
+    
+    free(pipeline);
+}
+
+// Execute a pipeline of commands
+int execute_pipeline(pipeline_t* pipeline) {
+    if (pipeline == NULL || pipeline->num_commands == 0) return -1;
+    
+    if (pipeline->num_commands == 1) {
+        // Single command (with or without redirection)
+        return execute_single_command(&pipeline->commands[0]);
+    } else {
+        // Multiple commands with pipes
+        int pipefds[MAX_COMMANDS - 1][2];
+        pid_t pids[MAX_COMMANDS];
+        int status;
+        
+        // Create pipes
+        for (int i = 0; i < pipeline->num_commands - 1; i++) {
+            if (pipe(pipefds[i]) == -1) {
+                perror("pipe");
+                return -1;
+            }
+        }
+        
+        // Fork child processes
+        for (int i = 0; i < pipeline->num_commands; i++) {
+            pids[i] = fork();
+            
+            if (pids[i] == -1) {
+                perror("fork");
+                return -1;
+            }
+            
+            if (pids[i] == 0) { // Child process
+                // Set up pipes
+                if (i > 0) {
+                    // Not first command: connect stdin to previous pipe
+                    dup2(pipefds[i-1][0], STDIN_FILENO);
+                }
+                
+                if (i < pipeline->num_commands - 1) {
+                    // Not last command: connect stdout to next pipe
+                    dup2(pipefds[i][1], STDOUT_FILENO);
+                }
+                
+                // Close all pipe file descriptors
+                for (int j = 0; j < pipeline->num_commands - 1; j++) {
+                    close(pipefds[j][0]);
+                    close(pipefds[j][1]);
+                }
+                
+                // Execute the command
+                execute_single_command(&pipeline->commands[i]);
+                exit(1); // Should not reach here if exec succeeds
+            }
+        }
+        
+        // Parent process: close all pipe file descriptors
+        for (int i = 0; i < pipeline->num_commands - 1; i++) {
+            close(pipefds[i][0]);
+            close(pipefds[i][1]);
+        }
+        
+        // Wait for all children
+        for (int i = 0; i < pipeline->num_commands; i++) {
+            waitpid(pids[i], &status, 0);
+        }
+        
+        return 0;
+    }
+}
+
+// Execute a single command with redirection
+int execute_single_command(command_t* cmd) {
+    if (cmd == NULL || cmd->args[0] == NULL) return -1;
+    
+    pid_t pid = fork();
+    
+    if (pid == -1) {
+        perror("fork");
+        return -1;
+    }
+    
+    if (pid == 0) { // Child process
+        // Set up redirection
+        if (setup_redirection(cmd) != 0) {
+            exit(1);
+        }
+        
+        // Execute the command
+        execvp(cmd->args[0], cmd->args);
+        perror("execvp");
+        exit(1);
+    } else { // Parent process
+        if (!cmd->background) {
+            int status;
+            waitpid(pid, &status, 0);
+            return status;
+        } else {
+            printf("[%d] %s\n", pid, cmd->args[0]);
+            return 0;
+        }
+    }
+}
+
+// Set up input/output redirection for a command
+int setup_redirection(command_t* cmd) {
+    // Input redirection
+    if (cmd->input_file != NULL) {
+        int fd = open(cmd->input_file, O_RDONLY);
+        if (fd == -1) {
+            perror("open input file");
+            return -1;
+        }
+        if (dup2(fd, STDIN_FILENO) == -1) {
+            perror("dup2 stdin");
+            close(fd);
+            return -1;
+        }
+        close(fd);
+    }
+    
+    // Output redirection
+    if (cmd->output_file != NULL) {
+        int flags = O_WRONLY | O_CREAT;
+        if (cmd->append_output) {
+            flags |= O_APPEND;
+        } else {
+            flags |= O_TRUNC;
+        }
+        
+        int fd = open(cmd->output_file, flags, 0644);
+        if (fd == -1) {
+            perror("open output file");
+            return -1;
+        }
+        if (dup2(fd, STDOUT_FILENO) == -1) {
+            perror("dup2 stdout");
+            close(fd);
+            return -1;
+        }
+        close(fd);
+    }
+    
+    return 0;
+}
+
+// Old execute function for backward compatibility
+int execute(char* arglist[]) {
+    if (arglist == NULL || arglist[0] == NULL) return -1;
+    
+    command_t cmd;
+    int i;
+    for (i = 0; arglist[i] != NULL && i < MAXARGS - 1; i++) {
+        cmd.args[i] = arglist[i];
+    }
+    cmd.args[i] = NULL;
+    cmd.input_file = NULL;
+    cmd.output_file = NULL;
+    cmd.append_output = 0;
+    cmd.background = 0;
+    
+    return execute_single_command(&cmd);
+}
+
+// Rest of the functions remain the same (history, built-ins, etc.)
 // History functions implementation
 void add_to_history(const char* command) {
     if (command == NULL || strlen(command) == 0) return;
@@ -210,6 +471,14 @@ void execute_help() {
     printf("  Tab Completion    - Press Tab to complete commands and filenames\n");
     printf("  History Navigation - Use Up/Down arrows to browse command history\n");
     printf("  Line Editing      - Full line editing capabilities\n");
+    printf("  I/O Redirection   - < (input), > (output), >> (append)\n");
+    printf("  Pipes             - | (connect commands)\n");
+    printf("  Background Jobs   - & (run in background)\n");
+    printf("\nExamples:\n");
+    printf("  ls -l > file_list.txt\n");
+    printf("  cat file.txt | grep \"pattern\" | sort\n");
+    printf("  sort < input.txt > output.txt\n");
+    printf("  sleep 10 &\n");
     printf("\nExternal commands are also supported (ls, pwd, grep, etc.)\n");
 }
 

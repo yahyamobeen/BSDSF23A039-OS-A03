@@ -1,20 +1,21 @@
 #include "shell.h"
 
-int execute(char* arglist[]) {
-    int status;
-    int cpid = fork();
+// This file is now mostly redundant as functionality moved to shell.c
+// Keeping it for backward compatibility
 
-    switch (cpid) {
-        case -1:
-            perror("fork failed");
-            exit(1);
-        case 0: // Child process
-            execvp(arglist[0], arglist);
-            perror("Command not found"); // This line runs only if execvp fails
-            exit(1);
-        default: // Parent process
-            waitpid(cpid, &status, 0);
-            // printf("Child pid:%d exited with status %d\n", cpid, status >> 8);
-            return 0;
+int execute(char* arglist[]) {
+    if (arglist == NULL || arglist[0] == NULL) return -1;
+    
+    command_t cmd;
+    int i;
+    for (i = 0; arglist[i] != NULL && i < MAXARGS - 1; i++) {
+        cmd.args[i] = arglist[i];
     }
+    cmd.args[i] = NULL;
+    cmd.input_file = NULL;
+    cmd.output_file = NULL;
+    cmd.append_output = 0;
+    cmd.background = 0;
+    
+    return execute_single_command(&cmd);
 }
