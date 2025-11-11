@@ -3,7 +3,8 @@ CFLAGS = -I./include -g -Wall
 LDFLAGS = -lreadline
 SRCDIR = src
 BINDIR = bin
-SOURCES = $(SRCDIR)/main.c $(SRCDIR)/shell.c $(SRCDIR)/execute.c $(SRCDIR)/parser.c
+SOURCES = $(SRCDIR)/main.c $(SRCDIR)/shell.c $(SRCDIR)/execute.c $(SRCDIR)/jobs.c $(SRCDIR)/control.c $(SRCDIR)/parser.c
+
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = $(BINDIR)/myshell
 

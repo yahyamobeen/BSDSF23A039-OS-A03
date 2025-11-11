@@ -44,7 +44,7 @@ Current Built-in Commands
 
     help - Show help message with available commands
 
-    jobs - Placeholder for job control (not yet implemented)
+    jobs - Show active background jobs
 
     history - Show command history (last 20 commands)
 
@@ -76,11 +76,39 @@ I/O Redirection and Pipes
 
         Example: cat file.txt | grep "pattern" | sort
 
-Background Execution
+Command Chaining and Background Execution
+
+    Command Chaining: ; - Execute commands sequentially
+
+        Example: ls -l; pwd; whoami
 
     Background Jobs: & - Run command in background
 
         Example: sleep 10 &
+
+    Job Control: jobs - List active background jobs
+
+Control Structures
+
+    if-then-else-fi: Conditional command execution
+
+        Example:
+        bash
+
+if grep "user" /etc/passwd
+then
+    echo "User found"
+else
+    echo "User not found"
+fi
+
+Example without else:
+bash
+
+if [ -f "myfile.txt" ]
+then
+    echo "File exists"
+fi
 
 Student: BSDSF23A039
 Course: Operating Systems
