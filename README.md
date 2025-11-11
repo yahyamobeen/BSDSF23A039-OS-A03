@@ -123,5 +123,6 @@ else
     echo "No .bashrc found"
 fi
 
-Student: BSDSF23A039
+Student: Yahya Mobeen
+Roll No. : BSDSF23A039
 Course: Operating Systems
